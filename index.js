@@ -5,10 +5,15 @@ require("dotenv").config();
 const port = process.env.PORT || 4000;
 
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
 
 // MongoDB
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.jazz428.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -45,10 +50,23 @@ async function run() {
     // Get Foods
     app.get("/api/v1/get-foods", async (req, res) => {
       const query = {};
+      const sort = {};
+      const limit = Number(req.query.limit) || 500;
+
+      if (req.query.id) {
+        const id = Number(req.query.id);
+        query._id = new ObjectId(id);
+        console.log(query);
+      }
+
       if (req.query.email) {
         query["donor.email"] = req.query.email;
       }
-      const cursor = foodsCollection.find(query);
+      if (req.query.sortBy && req.query.sortOrder) {
+        sort[req.query.sortBy] = req.query.sortOrder;
+        console.log(sort);
+      }
+      const cursor = foodsCollection.find(query).sort(sort).limit(limit);
       const result = await cursor.toArray();
       res.send(result);
     });
