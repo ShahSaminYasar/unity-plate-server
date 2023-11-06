@@ -1,6 +1,6 @@
 const express = require("express");
-const cors = require("cors");
 const app = express();
+const cors = require("cors");
 require("dotenv").config();
 const port = process.env.PORT || 4000;
 
@@ -26,6 +26,40 @@ async function run() {
     await client.connect();
 
     const foodsCollection = client.db("unityPlate").collection("foods");
+    const requestsCollection = client.db("unityPlate").collection("requests");
+
+    // Post Food
+    app.post("/api/v1/add-food", async (req, res) => {
+      const food = req.body;
+      const result = await foodsCollection.insertOne(food);
+      res.send(result);
+    });
+
+    // Post Food Request
+    app.post("/api/v1/add-request", async (req, res) => {
+      const request = req.body;
+      const result = await requestsCollection.insertOne(request);
+      res.send(result);
+    });
+
+    // Get Foods
+    app.get("/api/v1/get-foods", async (req, res) => {
+      const query = {};
+      if (req.query.email) {
+        query["donor.email"] = req.query.email;
+      }
+      const cursor = foodsCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // Get Food Requests
+    app.get("/api/v1/get-requests", async (req, res) => {
+      const query = { "donor.email": req.query.email };
+      const cursor = requestsCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
