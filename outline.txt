@@ -1,0 +1,67 @@
+Unity Plate
+=======
+# Api Design
+const food = {
+	donor: {
+		email,
+		image,
+		name,
+	},
+	image,
+	name,
+	quantity,
+	pickup_location,
+	expiry_date,
+	additional_note,
+	status: "available"/"delivered",
+}
+
+const foodRequest = {
+	requester: {
+		email,
+		name,
+		image,
+	},
+	donor: {
+		email,
+		name,
+		image,
+	}
+	food_id,
+	food_name,
+	food_image,
+	pickup_location,
+	expiry_date,
+	request_date,
+	donation_amount,
+	additional_note,
+	status: "available"/"delivered",
+}
+
+
+# Features
+Add a food; Get all foods; Add a request; Get all requests by current user; Get all request to current user;
+
+## Add a food
+app.post("/api/v1/add-food")
+
+## Get all foods
+app.get("/api/v1/get-foods")
+
+## Add a request
+app.post("/api/v1/add-request")
+
+## Get all requests
+app.get("/api/v1/get-requests")
+
+
+
+
+
+
+
+
+
+
+
+
