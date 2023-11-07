@@ -136,6 +136,19 @@ async function run() {
       res.send(result);
     });
 
+    // Edit Food
+    app.put("/api/v1/edit-food/:food_id", async (req, res) => {
+      const food = req.body;
+      const food_id = req.params.food_id;
+      // console.log("Food: ", food_id, food);
+
+      const filter = { _id: new ObjectId(food_id) };
+
+      const result = await foodsCollection.replaceOne(filter, food);
+
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
