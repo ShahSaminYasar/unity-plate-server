@@ -34,6 +34,46 @@ async function run() {
     const requestsCollection = client.db("unityPlate").collection("requests");
     const usersCollection = client.db("unityPlate").collection("users");
 
+    // User Update and JWT Sign
+    app.put("/api/v1/user", async (req, res) => {
+      const user = req.body;
+      const user_email = user?.email;
+      const user_name = user?.name;
+      const user_dp = user?.dp;
+
+      const query = { email: user_email };
+
+      const check = await usersCollection.find(query).toArray();
+
+      if (check.length === 0) {
+        const addUser = await usersCollection.insertOne(user);
+        res.send({ user: "added", addUser });
+      } else {
+        if (req.query.update) {
+          console.log("Updating with DP");
+          const updateUser = await usersCollection.updateOne(query, {
+            $set: {
+              name: user_name,
+              dp: user_dp,
+            },
+            $currentDate: {
+              lastModified: true,
+            },
+          });
+        } else {
+          const updateUser = await usersCollection.updateOne(query, {
+            $set: {
+              name: user_name,
+            },
+            $currentDate: {
+              lastModified: true,
+            },
+          });
+        }
+        res.send({ user: "updated" });
+      }
+    });
+
     // Post Food
     app.post("/api/v1/add-food", async (req, res) => {
       const food = req.body;
@@ -90,7 +130,7 @@ async function run() {
     // Get User
     app.get("/api/v1/get-user/:email", async (req, res) => {
       const query = { email: req.params.email };
-      console.log(query);
+      // console.log(query);
       const cursor = usersCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
