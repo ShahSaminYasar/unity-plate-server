@@ -32,6 +32,7 @@ async function run() {
 
     const foodsCollection = client.db("unityPlate").collection("foods");
     const requestsCollection = client.db("unityPlate").collection("requests");
+    const usersCollection = client.db("unityPlate").collection("users");
 
     // Post Food
     app.post("/api/v1/add-food", async (req, res) => {
@@ -43,20 +44,27 @@ async function run() {
     // Post Food Request
     app.post("/api/v1/add-request", async (req, res) => {
       const request = req.body;
-      const result = await requestsCollection.insertOne(request);
-      res.send(result);
+      const food_id = request.id;
+      const request_by = request.requester_email;
+      const query = { id: food_id, requester_email: request_by };
+      const check = await requestsCollection.find(query).toArray();
+      if (check.length === 0) {
+        const result = await requestsCollection.insertOne(request);
+        res.send(result);
+      } else {
+        res.send({ alreadyRequested: true });
+      }
     });
 
     // Get Foods
     app.get("/api/v1/get-foods", async (req, res) => {
       const query = {};
       const sort = {};
-      const limit = Number(req.query.limit) || 500;
+      const limit = parseInt(req.query.limit) || 500;
 
       if (req.query.id) {
-        const id = Number(req.query.id);
-        query._id = new ObjectId(id);
-        console.log(query);
+        query._id = new ObjectId(req.query.id);
+        // console.log(query);
       }
 
       if (req.query.email) {
@@ -64,7 +72,7 @@ async function run() {
       }
       if (req.query.sortBy && req.query.sortOrder) {
         sort[req.query.sortBy] = req.query.sortOrder;
-        console.log(sort);
+        // console.log(sort);
       }
       const cursor = foodsCollection.find(query).sort(sort).limit(limit);
       const result = await cursor.toArray();
@@ -75,6 +83,15 @@ async function run() {
     app.get("/api/v1/get-requests", async (req, res) => {
       const query = { "donor.email": req.query.email };
       const cursor = requestsCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // Get User
+    app.get("/api/v1/get-user/:email", async (req, res) => {
+      const query = { email: req.params.email };
+      console.log(query);
+      const cursor = usersCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
     });
