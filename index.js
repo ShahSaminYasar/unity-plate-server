@@ -114,6 +114,10 @@ async function run() {
           query["donor.email"] = req.query.email;
         }
 
+        if (!req.query.email && !req.query.id) {
+          query.status = "available";
+        }
+
         // Sort food data
         if (req.query.sortBy && req.query.sortOrder) {
           sort[req.query.sortBy] = req.query.sortOrder;
@@ -170,6 +174,45 @@ async function run() {
 
       res.send(result);
     });
+
+    // Confirm Food Request
+    app.put(
+      "/api/v1/confirm-request/:request_id/:food_id",
+      async (req, res) => {
+        try {
+          const request_id = req.params.request_id;
+          const food_id = req.params.food_id;
+          // console.log(request_id, food_id);
+
+          const queryOne = { id: food_id };
+          const queryTwo = { _id: new ObjectId(request_id) };
+          const queryThree = { _id: new ObjectId(food_id) };
+
+          const resultOne = await requestsCollection.updateMany(queryOne, {
+            $set: {
+              status: "canceled",
+            },
+          });
+
+          const resultTwo = await requestsCollection.updateOne(queryTwo, {
+            $set: {
+              status: "delivered",
+            },
+          });
+
+          const resultThree = await foodsCollection.updateOne(queryThree, {
+            $set: {
+              status: "delivered",
+            },
+          });
+
+          res.send({ resultOne, resultTwo, resultThree });
+        } catch (error) {
+          console.log(error);
+          res.status(404).send({ error: error });
+        }
+      }
+    );
 
     // Delete Food
     app.delete("/api/v1/delete-food/:food_id", async (req, res) => {
