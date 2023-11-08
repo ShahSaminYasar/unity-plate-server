@@ -171,6 +171,41 @@ async function run() {
       res.send(result);
     });
 
+    // Delete Food
+    app.delete("/api/v1/delete-food/:food_id", async (req, res) => {
+      try {
+        const food_id = req.params.food_id;
+        // console.log(food_id);
+
+        const resultOne = await foodsCollection.deleteOne({
+          _id: new ObjectId(food_id),
+        });
+
+        const resultTwo = await requestsCollection.deleteMany({
+          id: food_id,
+        });
+
+        res.send({ resultOne, resultTwo });
+      } catch (error) {
+        res.status(404).send(error);
+      }
+    });
+
+    // Cancel Request
+    app.delete("/api/v1/cancel-request/:request_id", async (req, res) => {
+      try {
+        const request_id = req.params.request_id;
+
+        const query = { _id: new ObjectId(request_id) };
+
+        const result = await requestsCollection.deleteOne(query);
+
+        res.send(result);
+      } catch (error) {
+        res.status(404).send(error);
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
