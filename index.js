@@ -98,46 +98,55 @@ async function run() {
 
     // Get Foods
     app.get("/api/v1/get-foods", async (req, res) => {
-      const query = {};
-      const sort = {};
-      const limit = parseInt(req.query.limit) || 500;
+      try {
+        const query = {};
+        const sort = {};
+        const limit = parseInt(req.query.limit) || 500;
 
-      // Single food with id
-      if (req.query.id) {
-        query._id = new ObjectId(req.query.id);
-        // console.log(query);
+        // Single food with id
+        if (req.query.id) {
+          query._id = new ObjectId(req.query.id);
+          // console.log(query);
+        }
+
+        // Foods according to an email
+        if (req.query.email) {
+          query["donor.email"] = req.query.email;
+        }
+
+        // Sort food data
+        if (req.query.sortBy && req.query.sortOrder) {
+          sort[req.query.sortBy] = req.query.sortOrder;
+          // console.log(sort);
+        }
+
+        const cursor = foodsCollection.find(query).sort(sort).limit(limit);
+        const result = await cursor.toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(404).send({ error: error });
       }
-
-      // Foods according to an email
-      if (req.query.email) {
-        query["donor.email"] = req.query.email;
-      }
-
-      // Sort food data
-      if (req.query.sortBy && req.query.sortOrder) {
-        sort[req.query.sortBy] = req.query.sortOrder;
-        // console.log(sort);
-      }
-
-      const cursor = foodsCollection.find(query).sort(sort).limit(limit);
-      const result = await cursor.toArray();
-      res.send(result);
     });
 
     // Get Food Requests
     app.get("/api/v1/get-requests", async (req, res) => {
-      let query = {};
-      if (req.query.requester) {
-        query = { requester_email: req.query.requester };
-      } else if (req.query.donor) {
-        query = { donor_email: req.query.donor };
-      } else {
-        res.send({ error: "not enough data" });
+      try {
+        let query = {};
+        if (req.query.requester) {
+          query = { requester_email: req.query.requester };
+        } else if (req.query.donor) {
+          query = { donor_email: req.query.donor };
+        } else if (req.query.id) {
+          query = { _id: new ObjectId(req.query.id) };
+        } else {
+          res.send({ error: "not enough data" });
+        }
+        const cursor = requestsCollection.find(query);
+        const result = await cursor.toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(404).send({ error });
       }
-      console.log(query);
-      const cursor = requestsCollection.find(query);
-      const result = await cursor.toArray();
-      res.send(result);
     });
 
     // Get User
