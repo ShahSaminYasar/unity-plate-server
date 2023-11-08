@@ -102,18 +102,23 @@ async function run() {
       const sort = {};
       const limit = parseInt(req.query.limit) || 500;
 
+      // Single food with id
       if (req.query.id) {
         query._id = new ObjectId(req.query.id);
         // console.log(query);
       }
 
+      // Foods according to an email
       if (req.query.email) {
         query["donor.email"] = req.query.email;
       }
+
+      // Sort food data
       if (req.query.sortBy && req.query.sortOrder) {
         sort[req.query.sortBy] = req.query.sortOrder;
         // console.log(sort);
       }
+
       const cursor = foodsCollection.find(query).sort(sort).limit(limit);
       const result = await cursor.toArray();
       res.send(result);
@@ -121,7 +126,15 @@ async function run() {
 
     // Get Food Requests
     app.get("/api/v1/get-requests", async (req, res) => {
-      const query = { "donor.email": req.query.email };
+      let query = {};
+      if (req.query.requester) {
+        query = { requester_email: req.query.requester };
+      } else if (req.query.donor) {
+        query = { donor_email: req.query.donor };
+      } else {
+        res.send({ error: "not enough data" });
+      }
+      console.log(query);
       const cursor = requestsCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
