@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const port = process.env.PORT || 4000;
 
@@ -11,6 +13,7 @@ app.use(
     credentials: true,
   })
 );
+app.use(cookieParser());
 
 // MongoDB
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -34,12 +37,35 @@ async function run() {
     const requestsCollection = client.db("unityPlate").collection("requests");
     const usersCollection = client.db("unityPlate").collection("users");
 
+    const verify = (req, res, next) => {
+      const token = req?.cookies?.access_token;
+      // console.log("Token: ", token);
+
+      if (!token) {
+        return res.status(403).send({ message: "unauthorized access" });
+      }
+
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "unauthorized access" });
+        }
+
+        req.user = decoded;
+        next();
+      });
+    };
+
     // User Update and JWT Sign
     app.put("/api/v1/user", async (req, res) => {
       const user = req.body;
       const user_email = user?.email;
       const user_name = user?.name;
       const user_dp = user?.dp;
+      const access_token_secret = process.env.ACCESS_TOKEN_SECRET;
+
+      const token = jwt.sign({ email: user_email }, access_token_secret, {
+        expiresIn: "1h",
+      });
 
       const query = { email: user_email };
 
@@ -50,7 +76,7 @@ async function run() {
         res.send({ user: "added", addUser });
       } else {
         if (req.query.update) {
-          console.log("Updating with DP");
+          // console.log("Updating with DP");
           const updateUser = await usersCollection.updateOne(query, {
             $set: {
               name: user_name,
@@ -70,19 +96,25 @@ async function run() {
             },
           });
         }
-        res.send({ user: "updated" });
+        res
+          .cookie("access_token", token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+          })
+          .send({ user: "updated" });
       }
     });
 
     // Post Food
-    app.post("/api/v1/add-food", async (req, res) => {
+    app.post("/api/v1/add-food", verify, async (req, res) => {
       const food = req.body;
       const result = await foodsCollection.insertOne(food);
       res.send(result);
     });
 
     // Post Food Request
-    app.post("/api/v1/add-request", async (req, res) => {
+    app.post("/api/v1/add-request", verify, async (req, res) => {
       const request = req.body;
       const food_id = request.id;
       const request_by = request.requester_email;
@@ -143,7 +175,7 @@ async function run() {
         } else if (req.query.id) {
           query = { _id: new ObjectId(req.query.id) };
         } else {
-          res.send({ error: "not enough data" });
+          return res.send({ error: "not enough data" });
         }
         const cursor = requestsCollection.find(query);
         const result = await cursor.toArray();
@@ -154,7 +186,7 @@ async function run() {
     });
 
     // Get User
-    app.get("/api/v1/get-user/:email", async (req, res) => {
+    app.get("/api/v1/get-user/:email", verify, async (req, res) => {
       const query = { email: req.params.email };
       // console.log(query);
       const cursor = usersCollection.find(query);
@@ -163,7 +195,7 @@ async function run() {
     });
 
     // Edit Food
-    app.put("/api/v1/edit-food/:food_id", async (req, res) => {
+    app.put("/api/v1/edit-food/:food_id", verify, async (req, res) => {
       const food = req.body;
       const food_id = req.params.food_id;
       // console.log("Food: ", food_id, food);
@@ -178,6 +210,7 @@ async function run() {
     // Confirm Food Request
     app.put(
       "/api/v1/confirm-request/:request_id/:food_id",
+      verify,
       async (req, res) => {
         try {
           const request_id = req.params.request_id;
@@ -215,7 +248,7 @@ async function run() {
     );
 
     // Delete Food
-    app.delete("/api/v1/delete-food/:food_id", async (req, res) => {
+    app.delete("/api/v1/delete-food/:food_id", verify, async (req, res) => {
       try {
         const food_id = req.params.food_id;
         // console.log(food_id);
@@ -235,19 +268,23 @@ async function run() {
     });
 
     // Cancel Request
-    app.delete("/api/v1/cancel-request/:request_id", async (req, res) => {
-      try {
-        const request_id = req.params.request_id;
+    app.delete(
+      "/api/v1/cancel-request/:request_id",
+      verify,
+      async (req, res) => {
+        try {
+          const request_id = req.params.request_id;
 
-        const query = { _id: new ObjectId(request_id) };
+          const query = { _id: new ObjectId(request_id) };
 
-        const result = await requestsCollection.deleteOne(query);
+          const result = await requestsCollection.deleteOne(query);
 
-        res.send(result);
-      } catch (error) {
-        res.status(404).send(error);
+          res.send(result);
+        } catch (error) {
+          res.status(404).send(error);
+        }
       }
-    });
+    );
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
